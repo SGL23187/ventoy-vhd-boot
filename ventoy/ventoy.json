@@ -1,0 +1,66 @@
+{
+    "control":[
+        { "VTOY_MAX_SEARCH_LEVEL": "2" },
+        { "VTOY_LINUX_REMOUNT": "1" },
+        { "VTOY_MENU_TIMEOUT": "5" },
+        { "VTOY_MENU_LANGUAGE": "zh_CN" },
+        { "VTOY_DEFAULT_SEARCH_ROOT": "/0ImageFiles" },
+        { "VTOY_DEFAULT_IMAGE": "/0ImageFiles/Windows11/Windows11.vhd" }
+    ],
+    "theme":{
+        "file":[
+            "/ventoy/themes/grub_gtg/theme.txt",
+            "/ventoy/themes/minegrub/theme.txt"
+        ],
+        "default_file": 2,
+        "gfxmode": "1920x1080",
+        "fonts":[
+            "/ventoy/themes/grub_gtg/bankgothic.pf2",
+            "/ventoy/themes/minegrub/Monocraft22.pf2",
+            "/ventoy/themes/minegrub/Minecraft24.pf2",
+            "/ventoy/themes/minegrub/Minecraft30.pf2"
+        ]
+    },
+    "theme_legacy":{
+        "file":[
+            "/ventoy/themes/grub_gtg/theme.txt",
+            "/ventoy/themes/minegrub/theme.txt"
+        ],
+        "default_file": 2,
+        "gfxmode": "1920x1080",
+        "fonts":[
+            "/ventoy/themes/grub_gtg/bankgothic.pf2",
+            "/ventoy/themes/minegrub/Monocraft22.pf2",
+            "/ventoy/themes/minegrub/Minecraft24.pf2",
+            "/ventoy/themes/minegrub/Minecraft30.pf2"
+        ]
+    },
+    "theme_uefi":{
+        "file":[
+            "/ventoy/themes/minegrub/theme.txt",
+            "/ventoy/themes/grub_gtg/theme.txt"
+        ],
+        "default_file": 1,
+        "gfxmode": "1920x1080",
+        "fonts":[
+            "/ventoy/themes/grub_gtg/bankgothic.pf2",
+            "/ventoy/themes/minegrub/Monocraft22.pf2",
+            "/ventoy/themes/minegrub/Minecraft24.pf2",
+            "/ventoy/themes/minegrub/Minecraft30.pf2"
+        ]
+    },
+    "menu_alias":[
+        {
+            "image": "/0ImageFiles/Windows11/Windows11.vhd",
+            "alias": "Win11"
+        }
+    ],
+    "menu_tip":{
+        "left": "100%",
+        "top": "100%",
+        "color": "#a9c9ef"
+    },
+    "image_blacklist":[
+        "/0ImageFiles/Windows11/Windows11_son.vhd"
+    ]
+}
