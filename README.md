@@ -436,6 +436,27 @@ M盘的作用在于承担软件安装，文件下载，以及一些经常使用�
 
 ---
 
+#### 6.设置启动检测环境脚本
+
+```powershell
+#首先要获取当前vhd的路径，获取方式取决于当前Firmware是UEFI还是BIOS
+
+#首先要调用GetFirmwareEnvironmentVariable这个API来获取VentoyOsParam
+#GUID为{ 0x77772020, 0x2e77, 0x6576, { 0x6e, 0x74, 0x6f, 0x79, 0x2e, 0x6e, 0x65, 0x74 }}
+#Ventoy 参数长度为 512 字节。
+
+#如果是UEFI，则可以正常获取，如果是BIOS，则无法获取
+#在Legacy BIOS模式下，Ventoy把参数保存在最开始的1M物理内存内，具体物理地址范围是 0x80000~0xA0000
+#可以利用 GetSystemFirmwareTable 接口获取数据然后再搜索具体位置。
+
+Add-Type -Language CSharp -TypeDefinition @"
+
+"@
+
+```
+
+
+
 ## 8.设置vhd差分备份
 
 ### 1.差分前的准备
@@ -470,15 +491,60 @@ M盘的作用在于承担软件安装，文件下载，以及一些经常使用�
 
 借鉴了[Windows Native VHD Boot and Dispatch](https://github.com/lyshie/vhd-boot-dispatch)中的VHD 建立順序
 
-base.vhdx(0) => test.vhdx(1)   == pcroom_base.vhdx(1) => pcroom.vhdx(2)
-                test_r.vhdx(1)                           pcroom_r.vhdx(2)
-                               == office_base.vhdx(1) => office.vhdx(2)
-                                                         office_r.vhdx(2)
-                                                         
+                                                   
 ```mermaid
-flowchart TD;
-     A-->B;
-     A-->C;
-     B-->D;
-     C-->D;
+flowchart LR
+     base[base.vhd] --> test[test.vhd]
+     test -.备份.-> test_r[/test_r.vhd/]
+     test --> pcroom_base[pcroom_base.vhd]
+     test --> office_base[office_base.vhd]
+     pcroom_base -.备份.-> pcroom_base_r[/pcroom_base_r.vhd/]
+     office_base -.备份.-> office_base_r[/office_base_r.vhd/]
+     pcroom_base --> pcroom[pcroom.vhd]
+     office_base --> office[office.vhd]
+     pcroom -.备份.-> pcroom_r[/pcroom_r.vhd/]
+     office -.备份.-> office_r[/office_r.vhd/]
 ```
+
+打开Powershell，输入以下命令
+
+> ```powershell
+> #############################
+> #设置变量
+> $letter = "D"
+> $path = "$($letter):\0ImageFiles\Windows11\Images\"
+> #设置要创建的n个档案，以pcroom和office为例
+> $archieve = "pcroom","office"
+> #############################
+>
+>
+>
+>
+> $archieve_base = $archieve | ForEach-Object {$_ + "_base"}
+> $child = @("test") + $archieve_base + $archieve
+> $parent = @("base") + @("test") * $archieve_base.Length + $archieve_base 
+> for($index = 0; $index -lt $child.Length; $index++){
+> #如果child.vhd或者child_r.vhd存在，则删除
+>    if(Test-Path "$($path)$($child[$index]).vhd"){
+>        Remove-Item -Path "$($path)$($child[$index]).vhd" -Force
+>    }
+>    if(Test-Path "$($path)$($child[$index])_r.vhd"){
+>        Remove-Item -Path "$($path)$($child[$index])_r.vhd" -Force
+>    }
+> #创建child.vhd
+>    "create vdisk file=`"$($path)$($child[$index]).vhd`" parent=`"$($path)$($parent[$index]).vhd`" noerr" | diskpart
+> #将child.vhd备份为child_r.vhd
+>   Copy-Item -Path "$($path)$($child[$index]).vhd" -Destination "$($path)$($child[$index])_r.vhd" -Force
+> }
+> #将除了archieve的所有base,child_r.vhd设置为只读，隐藏，系统文件
+> $files = @("base","test","test_r") + $archieve_base + ($archieve_base | ForEach-Object {$_ + "_r"}) + ($archieve | ForEach-Object {$_ + "_r"})
+> foreach($file in $files){
+>     (Get-Item -Path "$($path)$file.vhd").Attributes = [System.IO.FileAttributes]::ReadOnly + [System.IO.FileAttributes]::Hidden + [System.IO.FileAttributes]::System
+> }
+> ```
+
+即可创建出pcroom和office的vhd文件，其中pcroom_base.vhd和office_base.vhd为基础文件，pcroom.vhd和office.vhd为差分文件，pcroom_r.vhd和office_r.vhd为备份文件
+
+至此，我们便可从pcroom或office中启动
+
+
