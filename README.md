@@ -6,7 +6,7 @@ github:[ventoy-vhd-setting](https://github.com/SGL23187/ventoy-vhd-setting)
 
 ## 1.前言
 
-2024/09/22: 鉴于作者被亲爱的女朋友告知，`前言`部分不够白话，特此增加了更详细的说明，以便大家更好的理解。
+> **<font size=0>2024/09/22: 鉴于作者被亲爱的女友告知，`前言`部分不够白话，特此增加了更详细的说明，以便大家更好的理解。</font>**
 
 由于本人需要将系统带到机房工作的需求，因此会出现：家里的电脑和工作机房的系统不同步，以及不太希望在多个Windows系统上重复布置相同的环境。因此有了这篇博文，这篇博文旨在记录这段时间对ventoy和vhd装系统的一些感悟，以供未来的我和大家参考。
 
@@ -14,22 +14,51 @@ github:[ventoy-vhd-setting](https://github.com/SGL23187/ventoy-vhd-setting)
 
 ### 为什么使用ventoy和vhd创建多系统？
 
-ventoy是一个基于grub2开源的U盘启动工具，可以在开机时选择多种系统(vhd,iso等等)启动。不仅可以正常使用，还可以装系统，进PE等"geek"行为。
+ventoy是一个基于`grub2`开源的U盘启动工具，可以在开机时选择多种系统(vhd,iso等等)启动。不仅可以正常使用，还可以装系统，进PE等"geek"行为。
 
 作为一个计算机专业的学生，我经常需要在Windows系统和Linux系统之间切换，ventoy可以很方便的满足我的需求。
 
-同时，vhd是一种虚拟硬盘，可以在其中安装Windows, Linux等系统。我们使用vhd的好处在于，vhd平时可以当作一个文件，方便备份（简单的复制，粘贴就可以完成整个系统的转移），而且可以在不同的系统中共享，不用担心系统不同步的问题。
+同时，vhd是一种虚拟硬盘，可以在其中安装Windows, Linux等系统。我们使用vhd的好处在于，vhd平时可以当作一个文件，方便备份（*简单的复制，粘贴就可以完成整个系统的转移*），而且可以在不同的系统中共享，不用担心系统不同步的问题。
 
-vhd中有一个很实用的功能：差分备份。差分备份是指在一个基础文件上创建一个差分文件，这个差分文件只记录了基础文件和差分文件之间的差异，因此可以节省很多空间。我们可以在差分文件中安装软件，配置环境，而不用担心基础文件的改变。这就扩展出了以下玩法：
+vhd中有一个很实用的功能：**差分备份**。差分备份是指在一个基础文件上创建一个差分文件，这个差分文件只记录了基础文件和差分文件之间的差异，因此可以节省很多空间。我们可以在差分文件中安装软件，配置环境，而不用担心基础文件的改变。这就扩展出了以下玩法：
 
-1.备份
+1.**备份**
      - 我们可以将基础系统设置为base.vhd，然后在base.vhd上创建一个差分文件test.vhd，将其复制为test_r.vhd，这样我们就可以在test.vhd中安装软件，配置环境，而不用担心base.vhd的改变。如果我们不小心把test.vhd搞坏了，我们可以直接删除test.vhd，然后将test_r.vhd重命名为test.vhd，这样我们就可以恢复到之前的状态。
 
-2.转移
+2.**转移**
      - 如果我们有两台电脑，共同使用同一个系统。那么我们在电脑A所作的任何改变，只需要将很小的test.vhd复制到电脑B中，就可以在电脑B中看到电脑A的改变。
 
-3.虚拟机
+3.**虚拟机**
      - 如果我们对base.vhd差分为A.vhd和B.vhd,那我们可以在启动A系统的同时，将B.vhd挂载到虚拟机中，这样我们就可以在A系统中同时运行B系统。这样不仅不用重新创建一个虚拟机，可以直接用B系统的环境，还可以节省很多空间。
+
+### 本文使用的Windows差分备份方法
+
+将会生成以下几个vhd文件:
+|文件名|备份文件|层级|属性|说明|
+|:---:|:---:|:---:|:---:|:---:|
+|base.vhd|-|1|只读，隐藏，系统文件|系统安装在base.vhd中，进行简单的配置，优化后就再也不变了|
+|bak.vhd|-|2|只读，隐藏，系统文件|实际不会被改变，只用于base和其他xxx_base.vhd的原始备份|
+|work_base.vhd|bak.vhd|2|只读，隐藏，系统文件|最稳定的work系统，尽量不要改变|
+|game_base.vhd|bak.vhd|2|只读，隐藏，系统文件|最稳定的game系统，尽量不要改变|
+|work.vhd|work_r.vhd|3|只读，隐藏，系统文件|经常被merge，但不被直接使用的work系统|
+|game.vhd|game_r.vhd|3|只读，隐藏，系统文件|经常被merge，但不被直接使用的game系统|
+|work_cache.vhd|-|4|-|随时可能merge到work.vhd的work系统，用于临时存储|
+|game_cache.vhd|-|4|-|随时可能merge到game.vhd的game系统，用于临时存储|
+
+
+```mermaid
+flowchart TD
+    base[base.vhd] --> bak[bak.vhd]
+    bak -.复制.-> work_base[work_base.vhd]
+    bak -.复制.-> game_base[game_base.vhd]
+    bak -.-> .[...]
+    work_base --> work[work.vhd]
+    game_base --> game[game.vhd]
+    work -.备份.-> work_r[/work_r.vhd/]
+    game -.备份.-> game_r[/game_r.vhd/]
+    work --> work_cache([work_cache.vhd])
+    game --> game_cache([game_cache.vhd])
+```
 
 ## 2.准备的工具
 
@@ -401,7 +430,7 @@ ventoy中的文件结构为：
 > #地图应用
 > Get-AppxPackage Microsoft.WindowsMaps -User $env:UserName | Remove-AppxPackage
 > #Microsoft 365 应用
-> Get-AppxPackage Microsoft.MicrosoftOfficeHub -User $env:UserName | Remove-AppxPackage
+> Get-AppxPackage Microsoft.MicrosoftgameHub -User $env:UserName | Remove-AppxPackage
 > #Microsoft Clipchamp
 > Get-AppxPackage Microsoft.Clipchamp -User $env:UserName | Remove-AppxPackage
 > #Microsoft Team
@@ -412,7 +441,8 @@ ventoy中的文件结构为：
 > Get-AppxPackage Microsoft.MicrosoftStickyNotes -User $env:UserName | Remove-AppxPackage
 > ```
 
-[关闭UAC(用户帐户控制)实现获取管理员权限不弹窗](https://blog.csdn.net/weixin_45498884/article/details/141103754)
+[关闭UAC(用户帐户控制)实现获取管理员权限不弹窗](https://blog.csdn.net/s_ingularity/article/details/142436840)
+UserAccountControlSettings.exe
 
 任务栏：
 
@@ -459,22 +489,6 @@ M盘的作用在于承担软件安装，文件下载，以及一些经常使用�
 
 #### 6.设置启动检测环境脚本
 
-```powershell
-#首先要获取当前vhd的路径，获取方式取决于当前Firmware是UEFI还是BIOS
-
-#首先要调用GetFirmwareEnvironmentVariable这个API来获取VentoyOsParam
-#GUID为{ 0x77772020, 0x2e77, 0x6576, { 0x6e, 0x74, 0x6f, 0x79, 0x2e, 0x6e, 0x65, 0x74 }}
-#Ventoy 参数长度为 512 字节。
-
-#如果是UEFI，则可以正常获取，如果是BIOS，则无法获取
-#在Legacy BIOS模式下，Ventoy把参数保存在最开始的1M物理内存内，具体物理地址范围是 0x80000~0xA0000
-#可以利用 GetSystemFirmwareTable 接口获取数据然后再搜索具体位置。
-
-Add-Type -Language CSharp -TypeDefinition @"
-
-"@
-
-```
 
 
 
@@ -513,19 +527,21 @@ Add-Type -Language CSharp -TypeDefinition @"
 借鉴了[Windows Native VHD Boot and Dispatch](https://github.com/lyshie/vhd-boot-dispatch)中的VHD 建立順序
 
                                                    
+
 ```mermaid
-flowchart LR
-     base[base.vhd] --> test[test.vhd]
-     test -.备份.-> test_r[/test_r.vhd/]
-     test --> pcroom_base[pcroom_base.vhd]
-     test --> office_base[office_base.vhd]
-     pcroom_base -.备份.-> pcroom_base_r[/pcroom_base_r.vhd/]
-     office_base -.备份.-> office_base_r[/office_base_r.vhd/]
-     pcroom_base --> pcroom[pcroom.vhd]
-     office_base --> office[office.vhd]
-     pcroom -.备份.-> pcroom_r[/pcroom_r.vhd/]
-     office -.备份.-> office_r[/office_r.vhd/]
+flowchart TD
+    base[base.vhd] --> bak[bak.vhd]
+    bak -.复制.-> work_base[work_base.vhd]
+    bak -.复制.-> game_base[game_base.vhd]
+    bak -.-> .[...]
+    work_base --> work[work.vhd]
+    game_base --> game[game.vhd]
+    work -.备份.-> work_r[/work_r.vhd/]
+    game -.备份.-> game_r[/game_r.vhd/]
+    work --> work_cache([work_cache.vhd])
+    game --> game_cache([game_cache.vhd])
 ```
+
 
 打开Powershell，输入以下命令
 
@@ -534,38 +550,43 @@ flowchart LR
 > #设置变量
 > $letter = "D"
 > $path = "$($letter):\0ImageFiles\Windows11\Images\"
-> #设置要创建的n个档案，以pcroom和office为例
-> $archieve = "pcroom","office"
+> #设置要创建的n个档案，以work和game为例
+> $archieve = "work","game"
 > #############################
 >
->
->
->
-> $archieve_base = $archieve | ForEach-Object {$_ + "_base"}
-> $child = @("test") + $archieve_base + $archieve
-> $parent = @("base") + @("test") * $archieve_base.Length + $archieve_base 
-> for($index = 0; $index -lt $child.Length; $index++){
-> #如果child.vhd或者child_r.vhd存在，则删除
->    if(Test-Path "$($path)$($child[$index]).vhd"){
->        Remove-Item -Path "$($path)$($child[$index]).vhd" -Force
->    }
->    if(Test-Path "$($path)$($child[$index])_r.vhd"){
->        Remove-Item -Path "$($path)$($child[$index])_r.vhd" -Force
->    }
-> #创建child.vhd
->    "create vdisk file=`"$($path)$($child[$index]).vhd`" parent=`"$($path)$($parent[$index]).vhd`" noerr" | diskpart
-> #将child.vhd备份为child_r.vhd
->   Copy-Item -Path "$($path)$($child[$index]).vhd" -Destination "$($path)$($child[$index])_r.vhd" -Force
+> Write-Host "该命令将删除除了base.vhd之外的所有vhd文件，是否继续？(y/n)"
+> $input = Read-Host
+> if($input -ne "y"){
+>     exit
 > }
-> #将除了archieve的所有base,child_r.vhd设置为只读，隐藏，系统文件
-> $files = @("base","test","test_r") + $archieve_base + ($archieve_base | ForEach-Object {$_ + "_r"}) + ($archieve | ForEach-Object {$_ + "_r"})
-> foreach($file in $files){
->     (Get-Item -Path "$($path)$file.vhd").Attributes = [System.IO.FileAttributes]::ReadOnly + [System.IO.FileAttributes]::Hidden + [System.IO.FileAttributes]::System
+>
+> #删除除了base.vhd之外的所有vhd文件
+> Get-ChildItem -Path $path -Filter "*.vhd" | Where-Object {$_ -notlike "base.vhd"} | Remove-Item -Force
+>
+> function New-ChildVHD($path,$parent,$child){
+>     "create vdisk file=`"$($path)$($child).vhd`" parent=`"$($path)$($parent).vhd`" noerr" | diskpart
+> }
+> #如果base.vhd不存在，则提示：请先创建base.vhd
+> if(!(Test-Path "$($path)base.vhd")){
+>     Write-Host "请先创建base.vhd"
+>     exit
+> }
+>
+> #创建bak.vhd
+> New-ChildVHD -path $path -parent "base" -child "bak"
+> foreach($item in $archieve){
+>   #复制获得xxx_base.vhd
+>   Copy-Item -Path "$($path)bak.vhd" -Destination "$($path)$($item)_base.vhd" -Force
+>   #创建xxx.vhd
+>   New-ChildVHD -path $path -parent "$($item)_base" -child $item
+>   #复制获得xxx_r.vhd
+>   Copy-Item -Path "$($path)$($item).vhd" -Destination "$($path)$($item)_r.vhd" -Force
+>   #创建xxx_cache.vhd
+>   New-ChildVHD -path $path -parent "$($item)" -child "$($item)_cache"
+> }
+> #将部分vhd设置为只读，隐藏，系统文件
+> $files = @("base","bak") + ($archieve | ForEach-Object {$_,"$($_)_base","$($_)_r"})
+> foreach($item in $files){
+>     (Get-Item -Path "$($path)$($item).vhd").Attributes = [System.IO.FileAttributes]::ReadOnly + [System.IO.FileAttributes]::Hidden + [System.IO.FileAttributes]::System
 > }
 > ```
-
-即可创建出pcroom和office的vhd文件，其中pcroom_base.vhd和office_base.vhd为基础文件，pcroom.vhd和office.vhd为差分文件，pcroom_r.vhd和office_r.vhd为备份文件
-
-至此，我们便可从pcroom或office中启动
-
-
